@@ -1,0 +1,9 @@
+{
+  "name": "bahasa-practice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bahasa Practice, self-hosted on Vercel (static frontend + two serverless functions).",
+  "engines": {
+    "node": ">=18"
+  }
+}
