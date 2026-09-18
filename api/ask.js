@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
-        max_tokens: 4096,
+        max_tokens: 2048,
+        thinking: { type: "disabled" },
         system,
         messages,
       }),
