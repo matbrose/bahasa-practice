@@ -990,11 +990,20 @@ const CSS = `
 .bh-meter i{display:block;height:100%;background:var(--no);border-radius:999px;opacity:.75}
 .bh-count{font-size:13px;color:var(--muted);font-weight:500;flex:none;min-width:32px;text-align:right}
 .bh-fc{display:flex;align-items:flex-end;gap:4px;height:64px;margin-bottom:8px}
-.bh-stack{display:flex;gap:3px;height:14px;margin-bottom:12px}
-.bh-stackseg{border-radius:999px;min-width:6px}
-.bh-legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:12.5px;color:var(--muted)}
-.bh-legend span{display:flex;align-items:center;gap:6px}
-.bh-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.bh-stattiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bh-stattile{border-radius:14px;padding:14px 16px;background:var(--canvas)}
+.bh-stattile b{display:block;font-size:26px;line-height:1.15}
+.bh-stattile span{display:block;font-size:12px;color:var(--muted);margin-top:3px;font-weight:500}
+.bh-stattile[data-tone="settling"]{background:var(--act)}
+.bh-stattile[data-tone="settling"] b{color:var(--act-ink)}
+.bh-stattile[data-tone="settling"] span{color:var(--act-ink);opacity:.75}
+.bh-stattile[data-tone="holding"]{background:var(--teal-soft)}
+.bh-stattile[data-tone="holding"] b{color:var(--teal-ink)}
+.bh-stattile[data-tone="holding"] span{color:var(--teal-ink);opacity:.75}
+.bh-stattile[data-tone="solid"]{background:var(--solid)}
+.bh-stattile[data-tone="solid"] b,.bh-stattile[data-tone="solid"] span{color:#fff}
+.bh-stattile[data-tone="solid"] span{opacity:.85}
+.bh-pnum-sub{color:var(--faint);font-weight:500}
 .bh-fc div{flex:1;border-radius:3px;min-height:3px}
 .bh-fclab{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);font-weight:500}
 .bh-blank{color:var(--muted);font-size:15px;line-height:1.7;padding:20px;max-width:42ch;background:var(--paper);border:var(--bw) dashed var(--line);border-radius:18px}
@@ -2532,7 +2541,8 @@ function Memory({ data, vocab, weakWords, back, persist, go }) {
 
   const hardest = Object.entries(data.mem)
     .map(([k, v]) => ({ k: k.split("|")[0], dir: k.split("|")[1], ...v }))
-    .sort((a, b) => b.d - a.d)
+    .filter((h) => (h.l || 0) > 0 || (h.d || 0) >= 6)
+    .sort((a, b) => (b.l || 0) - (a.l || 0) || (b.d || 0) - (a.d || 0))
     .slice(0, 8);
 
 
@@ -2548,21 +2558,19 @@ function Memory({ data, vocab, weakWords, back, persist, go }) {
 
       <div className="bh-panel">
         <div className="bh-plabel">How far along your {vocab.length} cards are</div>
-        <div className="bh-stack">
-          {[
-            { k: "new", n: stages.fresh, c: "var(--hair)", t: "not started" },
-            { k: "settling", n: stages.settling, c: "var(--act-line)", t: "settling in" },
-            { k: "holding", n: stages.holding, c: "var(--teal)", t: "days apart" },
-            { k: "solid", n: stages.solid, c: "var(--solid)", t: "weeks apart" },
-          ].map((s) => s.n > 0 && (
-            <div key={s.k} className="bh-stackseg" style={{ flex: s.n, background: s.c }} title={`${s.n} ${s.t}`} />
-          ))}
-        </div>
-        <div className="bh-legend">
-          <span><i style={{ background: "var(--hair)" }} />{stages.fresh} never seen</span>
-          <span><i style={{ background: "var(--act-line)" }} />{stages.settling} still settling in</span>
-          <span><i style={{ background: "var(--teal)" }} />{stages.holding} come back in days</span>
-          <span><i style={{ background: "var(--solid)" }} />{stages.solid} come back in weeks</span>
+        <div className="bh-stattiles">
+          <div className="bh-stattile" data-tone="fresh">
+            <b className="serif">{stages.fresh}</b><span>never seen</span>
+          </div>
+          <div className="bh-stattile" data-tone="settling">
+            <b className="serif">{stages.settling}</b><span>settling in</span>
+          </div>
+          <div className="bh-stattile" data-tone="holding">
+            <b className="serif">{stages.holding}</b><span>come back in days</span>
+          </div>
+          <div className="bh-stattile" data-tone="solid">
+            <b className="serif">{stages.solid}</b><span>come back in weeks</span>
+          </div>
         </div>
       </div>
 
@@ -2609,13 +2617,13 @@ function Memory({ data, vocab, weakWords, back, persist, go }) {
               </span>
               <span className="bh-pnum">
                 {p.thin ? <span className="bh-thin">too few tries</span>
-                  : <><b>{p.w}</b> wrong of {p.n}</>}
+                  : <><b>{Math.round(p.rate * 100)}%</b> wrong <span className="bh-pnum-sub">({p.w} of {p.n})</span></>}
               </span>
               <div className="bh-meter"><i style={{ width: `${Math.round(p.rate * 100)}%` }} /></div>
             </button>
           ))}
           <div className="bh-note" style={{ marginTop: 12 }}>
-            Sorted by how many mistakes each one actually cost you, not by percentage. Tap one for a short lesson.
+            Ranked by how many mistakes each one actually cost you. The bold number is how often it goes wrong when it comes up. Tap one for a short lesson.
           </div>
         </div>
       )}
@@ -2624,11 +2632,15 @@ function Memory({ data, vocab, weakWords, back, persist, go }) {
         <div className="bh-panel">
           <div className="bh-plabel">Words you drop inside sentences</div>
           <div className="bh-chips">
-            {weakWords.map((w) => (
-              <span key={w.k} className="bh-chip" style={{ background: "var(--no-bg)", color: "var(--no)" }}>
-                {showWord(w.k, data.register)} · {w.w}x
-              </span>
-            ))}
+            {(() => {
+              const maxW = Math.max(...weakWords.map((w) => w.w));
+              return weakWords.map((w) => (
+                <span key={w.k} className="bh-chip"
+                  style={{ background: "var(--no-bg)", color: "var(--no)", opacity: 0.55 + 0.45 * (w.w / maxW) }}>
+                  {showWord(w.k, data.register)} · {w.w}x
+                </span>
+              ));
+            })()}
           </div>
           <div className="bh-note" style={{ marginTop: 14 }}>
             These come round more often in the drill now, and the sentence forge builds around them.
@@ -2639,12 +2651,23 @@ function Memory({ data, vocab, weakWords, back, persist, go }) {
       {hardest.length > 0 && (
         <div className="bh-panel">
           <div className="bh-plabel">Hardest items right now</div>
-          {hardest.map((h, i) => (
-            <div key={i} className="bh-row">
-              <span>{h.k}</span>
-              <span className="bh-count">{showDelay(schedInt(h, data.want))}</span>
-            </div>
-          ))}
+          {hardest.map((h, i) => {
+            const left = dueIn(h, data.want, now);
+            return (
+              <div key={i} className="bh-row">
+                <span style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>{h.k}</span>
+                <span className="bh-count" style={{ minWidth: "auto" }}>
+                  {h.l > 0 ? `wrong ${h.l}x` : "tricky"}
+                  <span style={{ display: "block", color: "var(--faint)", fontWeight: 400 }}>
+                    {left <= 0 ? "due now" : `back in ${showDelay(left)}`}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+          <div className="bh-note" style={{ marginTop: 12 }}>
+            Sorted by how often you've actually gotten these wrong.
+          </div>
         </div>
       )}
 
