@@ -47,6 +47,7 @@ module.exports = async (req, res) => {
       return;
     }
     const text = (d.content || []).map((c) => (c.type === "text" ? c.text : "")).join("").trim();
+    console.log("ask debug: stop_reason=" + d.stop_reason + " len=" + text.length + " preview=" + JSON.stringify(text.slice(0, 300)));
     res.status(200).json({ text });
   } catch (e) {
     res.status(500).json({ error: String((e && e.message) || e) });
